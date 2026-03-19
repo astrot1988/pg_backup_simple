@@ -1,0 +1,9 @@
+services:
+  pg-backup:
+    build: .
+    container_name: pg_backup_simple
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./backups:${BACKUP_DIR:-/backups}

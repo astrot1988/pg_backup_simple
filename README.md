@@ -10,7 +10,7 @@
 
 - По расписанию запускает `pg_dump`
 - Сохраняет backup в `*.sql.gz`
-- Поддерживает retention через `KEEP_DAILY`, `KEEP_WEEKLY`, `KEEP_MONTHLY`, `KEEP_YEARLY`
+- Поддерживает retention через `KEEP_HOURLY`, `KEEP_DAILY`, `KEEP_WEEKLY`, `KEEP_MONTHLY`, `KEEP_YEARLY`
 - Если `KEEP_*` не заданы, ничего не удаляет
 - Конфигурируется через один `.env`
 
@@ -37,7 +37,7 @@ docker pull ghcr.io/astrot1988/pg_backup_simple:latest
 - `CRON` - cron-выражение, например `0 2 * * *`
 - `BACKUP_DIR` - путь внутри контейнера
 - Папка на хосте фиксирована: `./backups`
-- `KEEP_DAILY`, `KEEP_WEEKLY`, `KEEP_MONTHLY`, `KEEP_YEARLY` - сколько периодов хранить
+- `KEEP_HOURLY`, `KEEP_DAILY`, `KEEP_WEEKLY`, `KEEP_MONTHLY`, `KEEP_YEARLY` - сколько периодов хранить
 
 ## Как работает retention
 
@@ -48,6 +48,7 @@ docker pull ghcr.io/astrot1988/pg_backup_simple:latest
 
 Пример:
 
+- `KEEP_HOURLY=24` - оставить последние 24 часа
 - `KEEP_DAILY=7` - оставить последние 7 дней
 - `KEEP_WEEKLY=8` - дополнительно оставить последние 8 недель
 - `KEEP_MONTHLY=12` - дополнительно оставить последние 12 месяцев
@@ -56,4 +57,49 @@ docker pull ghcr.io/astrot1988/pg_backup_simple:latest
 
 ```bash
 docker compose exec pg-backup /app/backup.sh
+```
+
+## Тестовый стенд
+
+Есть отдельный `compose` с stub-базой PostgreSQL и тестовым backup-контейнером.
+
+Запуск:
+
+```bash
+docker compose -f docker-compose.test.yml up -d --build
+```
+
+Что поднимается:
+
+- `postgres` c тестовой БД `app`
+- `pg-backup` с подключением к этой БД
+- backup каждые 5 минут
+- файлы backup сохраняются в `./test_backups`
+
+Инициализация базы лежит в [testdb/init.sql](/Users/aleksejlutovinov/Projects/quank-mvp/pg_backup_simple/testdb/init.sql).
+
+Для ручного теста backup:
+
+```bash
+docker compose -f docker-compose.test.yml exec pg-backup /app/backup.sh
+ls -la ./test_backups
+```
+
+## Тест retention
+
+Есть shell-тест для [retention.sh](/Users/aleksejlutovinov/Projects/quank-mvp/pg_backup_simple/retention.sh), который проверяет:
+
+- отключенный retention
+- `KEEP_HOURLY`
+- `KEEP_DAILY`
+- `KEEP_WEEKLY`
+- `KEEP_MONTHLY`
+- `KEEP_YEARLY`
+- совместную работу нескольких правил
+
+Запуск:
+
+```bash
+docker build -t pg_backup_simple:test .
+docker run --rm -v "$PWD":/app -w /app --entrypoint bash pg_backup_simple:test tests/retention_test.sh
 ```

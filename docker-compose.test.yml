@@ -1,0 +1,32 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: pg_backup_simple_test_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: app
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "54329:5432"
+    volumes:
+      - ./testdb/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+
+  pg-backup:
+    build: .
+    container_name: pg_backup_simple_test_backup
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/app
+      CRON: "* * * * *"
+      TZ: UTC
+      BACKUP_DIR: /backups
+      KEEP_HOURLY: 3
+      KEEP_DAILY: 2
+      KEEP_WEEKLY: 2
+      KEEP_MONTHLY: 2
+      KEEP_YEARLY: ""
+    volumes:
+      - ./test_backups:/backups

@@ -25,6 +25,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Build test image
+        run: docker build -t pg_backup_simple:test .
+
+      - name: Run retention tests
+        run: docker run --rm -v "$PWD":/app -w /app --entrypoint bash pg_backup_simple:test tests/retention_test.sh
+
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
